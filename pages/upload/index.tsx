@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 
 interface BatchInfo {
   progress?: number
@@ -8,10 +8,13 @@ interface BatchInfo {
 function UploadCsv() {
   const API_URL = "http://laravel.job-batching.backend:8000/api";
   const [batchInfo, setbatchInfo] = useState<BatchInfo>({});
+  const [isUpLoading, setIsUpLoading] = useState(false)
   const csvRef: any = useRef();
+  const uploadProgressInterval: any = useRef("")
 
   const handleSubmit = (e: any): void => {
     e.preventDefault();
+    setIsUpLoading(true)
     const inputFile = csvRef.current;
     const file = inputFile.files[0];
     if (!file) return;
@@ -21,37 +24,57 @@ function UploadCsv() {
     fetch(`${API_URL}/upload`, { method: "post", body: formData })
       .then((res) => res.json())
       .then((data) => {
-        setbatchInfo({...batchInfo, id: data.id})
-        getBatchInfo(data.id)
+        setbatchInfo({...batchInfo, id: data.id, progress: data.progress})
+        setIsUpLoading(false)
+        console.log(batchInfo)
       });
+    e.target.reset();
   };
 
   const getBatchInfo = (id = ""): void => {
     const currentId = id || batchInfo.id
+    console.log(id);
     fetch(`${API_URL}/batch?id=${currentId}`)
       .then((res) => res.json())
-      .then((data) => setbatchInfo({...batchInfo, progress: data.progress}));
+      .then((data) => {
+        setbatchInfo({...batchInfo, id: batchInfo.id, progress: data.progress})
+        console.log(batchInfo)
+        if (data.progress >= 100) {
+          clearInterval(uploadProgressInterval.current);
+        }
+    });
   };
 
-  useEffect(() => {
-    const refreshProgress =  setInterval(() => {
-      if(batchInfo.progress && batchInfo.progress !== 100) {
-        getBatchInfo(batchInfo.id);
-      }
-    }, 2000)
+  
 
-    return () => clearInterval(refreshProgress);
+  const updateProgress = () => {
+    if (uploadProgressInterval.current) return;
+    uploadProgressInterval.current =  setInterval(() => {
+      // if(batchInfo.progress && batchInfo.progress <= 100) {
+        console.log("refreshing");
+        getBatchInfo();
+      // }
+    }, 2000)
     
-  }, []);
+    
+  }
+
+  useEffect(() => {
+    if (batchInfo.id) {
+      updateProgress()
+    }
+  }, [batchInfo.id]);
 
   return (
     <section className="m-auto">
-      {batchInfo.progress ? (
+      {batchInfo.progress !== undefined ? (
         <section>
           <h1 className="text-xl text-gray-800 text-center mb-5">
             Upload In Progress ({`${batchInfo.progress}%`})
           </h1>
-          <progress value={batchInfo.progress}></progress>
+          <div className="w-ful h-4 rounded-lg shadow-inner border">
+            <div className="bg-blue-700 w-full h-4 rounded-lg" style={{width: `${batchInfo.progress}%`}}></div>
+          </div>
         </section>
       ) : (
         <section>
@@ -63,7 +86,7 @@ function UploadCsv() {
             <input
               type="submit"
               value="Upload"
-              className="px-4 py-2 bg-gray-700 rounded text-white"
+              className={`px-4 py-2 ${isUpLoading ? 'bg-gray-400 outline-none' : 'bg-gray-700'} rounded text-white`}
             />
           </form>
         </section>
