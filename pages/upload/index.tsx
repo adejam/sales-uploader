@@ -1,4 +1,5 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useRef, useState } from "react";
 
 interface BatchInfo {
   progress?: number
@@ -14,6 +15,7 @@ function UploadCsv() {
 
   const handleSubmit = (e: any): void => {
     e.preventDefault();
+    if (isUpLoading) return;
     setIsUpLoading(true)
     const inputFile = csvRef.current;
     const file = inputFile.files[0];
@@ -25,22 +27,20 @@ function UploadCsv() {
       .then((res) => res.json())
       .then((data) => {
         setbatchInfo({...batchInfo, id: data.id, progress: data.progress})
-        setIsUpLoading(false)
-        console.log(batchInfo)
       });
     e.target.reset();
   };
 
   const getBatchInfo = (id = ""): void => {
     const currentId = id || batchInfo.id
-    console.log(id);
-    fetch(`${API_URL}/batch?id=${currentId}`)
+    fetch(`${API_URL}/batch/${currentId}`)
       .then((res) => res.json())
       .then((data) => {
         setbatchInfo({...batchInfo, id: batchInfo.id, progress: data.progress})
-        console.log(batchInfo)
         if (data.progress >= 100) {
           clearInterval(uploadProgressInterval.current);
+          setbatchInfo({})
+          setIsUpLoading(false)
         }
     });
   };
@@ -50,10 +50,7 @@ function UploadCsv() {
   const updateProgress = () => {
     if (uploadProgressInterval.current) return;
     uploadProgressInterval.current =  setInterval(() => {
-      // if(batchInfo.progress && batchInfo.progress <= 100) {
-        console.log("refreshing");
         getBatchInfo();
-      // }
     }, 2000)
     
     
@@ -61,7 +58,6 @@ function UploadCsv() {
 
   useEffect(() => {
     if (batchInfo.id) {
-      console.log(batchInfo.progress)
       updateProgress()
     }
   }, [batchInfo.id]);
