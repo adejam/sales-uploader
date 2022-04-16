@@ -61,9 +61,19 @@ function UploadCsv() {
 
   useEffect(() => {
     if (batchInfo.id) {
+      console.log(batchInfo.progress)
       updateProgress()
     }
   }, [batchInfo.id]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/batch/in-progress`)
+      .then((res) => res.json())
+      .then((data) => {
+        setbatchInfo({...batchInfo, id: data.id, progress: data.progress })
+    });
+  }, [])
+  
 
   return (
     <section className="m-auto">
